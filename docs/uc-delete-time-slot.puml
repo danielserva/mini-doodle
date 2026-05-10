@@ -1,0 +1,44 @@
+@startuml uc-delete-time-slot
+title Delete Time Slot
+
+actor Client
+participant "TimeSlotController" as Controller
+participant "TimeSlotService" as Service
+participant "CalendarRepositoryPort" as CalPort
+participant "TimeSlotRepositoryPort" as SlotPort
+database "PostgreSQL" as DB
+
+Client -> Controller : DELETE /api/v1/users/{userId}/slots/{slotId}
+activate Controller
+
+Controller -> Service : deleteTimeSlot(userId, slotId)
+activate Service
+
+Service -> CalPort : findByUserId(userId)
+activate CalPort
+CalPort -> DB : SELECT * FROM calendars WHERE user_id = ?
+DB --> CalPort : Calendar
+CalPort --> Service : Calendar
+deactivate CalPort
+
+Service -> SlotPort : findByIdAndCalendarId(slotId, calendarId)
+activate SlotPort
+SlotPort -> DB : SELECT * FROM time_slots WHERE id = ? AND calendar_id = ?
+DB --> SlotPort : TimeSlot
+SlotPort --> Service : TimeSlot
+deactivate SlotPort
+
+Service -> SlotPort : deleteById(slotId)
+activate SlotPort
+SlotPort -> DB : DELETE FROM time_slots WHERE id = ?
+DB --> SlotPort : ok
+SlotPort --> Service
+deactivate SlotPort
+
+Service --> Controller
+deactivate Service
+
+Controller --> Client : 204 No Content
+deactivate Controller
+
+@enduml

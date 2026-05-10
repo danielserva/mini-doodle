@@ -1,0 +1,40 @@
+@startuml uc-get-availability
+title Get Availability
+
+actor Client
+participant "AvailabilityController" as Controller
+participant "TimeSlotService" as Service
+participant "CalendarRepositoryPort" as CalPort
+participant "TimeSlotRepositoryPort" as SlotPort
+database "PostgreSQL" as DB
+
+Client -> Controller : GET /api/v1/users/{userId}/availability\n?from=&to=
+activate Controller
+
+Controller -> Service : queryAvailability(userId, from, to)
+activate Service
+
+Service -> CalPort : findByUserId(userId)
+activate CalPort
+CalPort -> DB : SELECT * FROM calendars WHERE user_id = ?
+DB --> CalPort : Calendar
+CalPort --> Service : Calendar
+deactivate CalPort
+
+Service -> SlotPort : findByCalendarIdInRange(calendarId, from, to)
+activate SlotPort
+SlotPort -> DB : SELECT * FROM time_slots\nWHERE calendar_id = ?\nAND start_time >= ? AND end_time <= ?\nORDER BY start_time ASC
+DB --> SlotPort : List<TimeSlotEntity>
+SlotPort --> Service : List<TimeSlot>
+deactivate SlotPort
+
+Service --> Controller : List<TimeSlot>
+deactivate Service
+
+Controller -> Controller : AvailabilityResponse.of(userId, from, to, slots)
+note right: aggregates FREE/BUSY counts\nand slot list into response
+
+Controller --> Client : 200 OK\n{userId, from, to, freeSlots, busySlots, slots:[...]}
+deactivate Controller
+
+@enduml

@@ -1,0 +1,57 @@
+@startuml uc-get-meeting
+title Get Meeting
+
+actor Client
+participant "MeetingController" as Controller
+participant "MeetingService" as Service
+participant "UserRepositoryPort" as UserPort
+participant "CalendarRepositoryPort" as CalPort
+participant "MeetingRepositoryPort" as MeetingPort
+participant "TimeSlotRepositoryPort" as SlotPort
+database "PostgreSQL" as DB
+
+Client -> Controller : GET /api/v1/users/{userId}/meetings/{meetingId}
+activate Controller
+
+Controller -> Service : getMeeting(userId, meetingId)
+activate Service
+
+Service -> UserPort : existsById(userId)
+activate UserPort
+UserPort -> DB : SELECT 1 FROM users WHERE id = ?
+DB --> UserPort : true
+UserPort --> Service
+deactivate UserPort
+
+Service -> CalPort : findByUserId(userId)
+activate CalPort
+CalPort -> DB : SELECT * FROM calendars WHERE user_id = ?
+DB --> CalPort : Calendar
+CalPort --> Service : Calendar
+deactivate CalPort
+
+Service -> MeetingPort : findById(meetingId)
+activate MeetingPort
+MeetingPort -> DB : SELECT * FROM meetings\nJOIN meeting_participants WHERE id = ?
+DB --> MeetingPort : Optional<MeetingEntity>
+MeetingPort --> Service : Meeting
+deactivate MeetingPort
+
+Service -> SlotPort : findByIdAndCalendarId(meeting.timeSlotId, calendarId)
+activate SlotPort
+SlotPort -> DB : SELECT * FROM time_slots WHERE id = ? AND calendar_id = ?
+DB --> SlotPort : Optional<TimeSlotEntity>
+SlotPort --> Service : TimeSlot
+deactivate SlotPort
+
+alt meeting or slot not found
+    Service --> Controller : throws MeetingNotFoundException
+    Controller --> Client : 404 Not Found
+else found
+    Service --> Controller : Meeting
+    Controller --> Client : 200 OK\n{id, timeSlotId, title, participantIds, ...}
+end
+deactivate Service
+deactivate Controller
+
+@enduml

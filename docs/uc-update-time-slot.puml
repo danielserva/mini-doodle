@@ -1,0 +1,48 @@
+@startuml uc-update-time-slot
+title Update Time Slot
+
+actor Client
+participant "TimeSlotController" as Controller
+participant "TimeSlotService" as Service
+participant "CalendarRepositoryPort" as CalPort
+participant "TimeSlotRepositoryPort" as SlotPort
+database "PostgreSQL" as DB
+
+Client -> Controller : PUT /api/v1/users/{userId}/slots/{slotId}\n{startTime, endTime}
+activate Controller
+
+Controller -> Service : updateTimeSlot(UpdateTimeSlotCommand)
+activate Service
+
+Service -> CalPort : findByUserId(userId)
+activate CalPort
+CalPort -> DB : SELECT * FROM calendars WHERE user_id = ?
+DB --> CalPort : Optional<Calendar>
+CalPort --> Service : Calendar
+deactivate CalPort
+
+Service -> SlotPort : findByIdAndCalendarId(slotId, calendarId)
+activate SlotPort
+SlotPort -> DB : SELECT * FROM time_slots WHERE id = ? AND calendar_id = ?
+DB --> SlotPort : Optional<TimeSlotEntity>
+SlotPort --> Service : TimeSlot
+deactivate SlotPort
+
+alt slot is BUSY
+    Service --> Controller : throws SlotAlreadyBookedException
+    Controller --> Client : 409 Conflict
+else slot is FREE
+    Service -> Service : new TimeSlot with updated startTime/endTime
+    Service -> SlotPort : save(updatedSlot)
+    activate SlotPort
+    SlotPort -> DB : UPDATE time_slots SET ...
+    DB --> SlotPort : TimeSlot
+    SlotPort --> Service : TimeSlot
+    deactivate SlotPort
+    Service --> Controller : TimeSlot
+    Controller --> Client : 200 OK\n{id, startTime, endTime, status, ...}
+end
+deactivate Service
+deactivate Controller
+
+@enduml

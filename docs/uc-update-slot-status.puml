@@ -1,0 +1,46 @@
+@startuml uc-update-slot-status
+title Update Slot Status
+
+actor Client
+participant "TimeSlotController" as Controller
+participant "TimeSlotService" as Service
+participant "CalendarRepositoryPort" as CalPort
+participant "TimeSlotRepositoryPort" as SlotPort
+database "PostgreSQL" as DB
+
+Client -> Controller : PATCH /api/v1/users/{userId}/slots/{slotId}/status\n{status: "FREE" | "BUSY"}
+activate Controller
+
+Controller -> Service : updateSlotStatus(userId, slotId, status)
+activate Service
+
+Service -> CalPort : findByUserId(userId)
+activate CalPort
+CalPort -> DB : SELECT * FROM calendars WHERE user_id = ?
+DB --> CalPort : Calendar
+CalPort --> Service : Calendar
+deactivate CalPort
+
+Service -> SlotPort : findByIdAndCalendarId(slotId, calendarId)
+activate SlotPort
+SlotPort -> DB : SELECT * FROM time_slots WHERE id = ? AND calendar_id = ?
+DB --> SlotPort : TimeSlot
+SlotPort --> Service : TimeSlot
+deactivate SlotPort
+
+Service -> Service : slot.withStatus(status)
+
+Service -> SlotPort : save(updatedSlot)
+activate SlotPort
+SlotPort -> DB : UPDATE time_slots SET status = ?
+DB --> SlotPort : TimeSlot
+SlotPort --> Service : TimeSlot
+deactivate SlotPort
+
+Service --> Controller : TimeSlot
+deactivate Service
+
+Controller --> Client : 200 OK\n{id, startTime, endTime, status, ...}
+deactivate Controller
+
+@enduml

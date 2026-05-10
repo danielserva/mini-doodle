@@ -1,0 +1,37 @@
+@startuml uc-list-time-slots
+title List Time Slots
+
+actor Client
+participant "TimeSlotController" as Controller
+participant "TimeSlotService" as Service
+participant "CalendarRepositoryPort" as CalPort
+participant "TimeSlotRepositoryPort" as SlotPort
+database "PostgreSQL" as DB
+
+Client -> Controller : GET /api/v1/users/{userId}/slots\n?from=&to=&status=&page=&size=
+activate Controller
+
+Controller -> Service : listTimeSlots(userId, from, to, status, pageable)
+activate Service
+
+Service -> CalPort : findByUserId(userId)
+activate CalPort
+CalPort -> DB : SELECT * FROM calendars WHERE user_id = ?
+DB --> CalPort : Calendar
+CalPort --> Service : Calendar
+deactivate CalPort
+
+Service -> SlotPort : findByCalendarId(calendarId, from, to, status, pageable)
+activate SlotPort
+SlotPort -> DB : SELECT * FROM time_slots\nWHERE calendar_id = ?\nAND start_time >= ? AND end_time <= ?\nAND status = ?\nORDER BY start_time ASC
+DB --> SlotPort : Page<TimeSlotEntity>
+SlotPort --> Service : Page<TimeSlot>
+deactivate SlotPort
+
+Service --> Controller : Page<TimeSlot>
+deactivate Service
+
+Controller --> Client : 200 OK\n{content: [...], page, size, totalElements}
+deactivate Controller
+
+@enduml

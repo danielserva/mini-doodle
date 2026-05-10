@@ -1,0 +1,55 @@
+@startuml uc-create-time-slot
+title Create Time Slot
+
+actor Client
+participant "TimeSlotController" as Controller
+participant "TimeSlotService" as Service
+participant "UserRepositoryPort" as UserPort
+participant "CalendarRepositoryPort" as CalPort
+participant "TimeSlotRepositoryPort" as SlotPort
+database "PostgreSQL" as DB
+
+Client -> Controller : POST /api/v1/users/{userId}/slots\n{startTime, endTime}
+activate Controller
+
+Controller -> Service : createTimeSlot(CreateTimeSlotCommand)
+activate Service
+
+Service -> UserPort : existsById(userId)
+activate UserPort
+UserPort -> DB : SELECT 1 FROM users WHERE id = ?
+DB --> UserPort : boolean
+UserPort --> Service : true
+deactivate UserPort
+
+Service -> CalPort : findByUserId(userId)
+activate CalPort
+CalPort -> DB : SELECT * FROM calendars WHERE user_id = ?
+DB --> CalPort : Optional<Calendar>
+deactivate CalPort
+
+alt calendar absent
+    Service -> CalPort : save(new Calendar)
+    activate CalPort
+    CalPort -> DB : INSERT INTO calendars
+    DB --> CalPort : Calendar
+    CalPort --> Service : Calendar
+    deactivate CalPort
+end
+
+Service -> Service : new TimeSlot(randomUUID, calendarId,\n  startTime, endTime, FREE, null, now, now)
+
+Service -> SlotPort : save(timeSlot)
+activate SlotPort
+SlotPort -> DB : INSERT INTO time_slots
+DB --> SlotPort : TimeSlot
+SlotPort --> Service : TimeSlot
+deactivate SlotPort
+
+Service --> Controller : TimeSlot
+deactivate Service
+
+Controller --> Client : 201 Created\n{id, startTime, endTime, status, ...}
+deactivate Controller
+
+@enduml

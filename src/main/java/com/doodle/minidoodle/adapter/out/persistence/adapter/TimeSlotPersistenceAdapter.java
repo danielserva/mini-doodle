@@ -53,6 +53,11 @@ public class TimeSlotPersistenceAdapter implements TimeSlotRepositoryPort {
     }
 
     @Override
+    public Optional<TimeSlot> findByIdAndCalendarIdForUpdate(UUID id, UUID calendarId) {
+        return timeSlotRepository.findByIdAndCalendarIdForUpdate(id, calendarId).map(mapper::toDomain);
+    }
+
+    @Override
     public void deleteById(UUID id) {
         timeSlotRepository.deleteById(id);
     }

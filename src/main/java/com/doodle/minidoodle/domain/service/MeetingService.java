@@ -35,7 +35,7 @@ public class MeetingService implements MeetingUseCase {
     @Transactional
     public Meeting scheduleMeeting(ScheduleMeetingCommand command) {
         Calendar calendar = requireCalendar(command.userId());
-        TimeSlot slot = timeSlotRepository.findByIdAndCalendarId(command.slotId(), calendar.id())
+        TimeSlot slot = timeSlotRepository.findByIdAndCalendarIdForUpdate(command.slotId(), calendar.id())
                 .orElseThrow(() -> new TimeSlotNotFoundException(command.slotId()));
 
         if (slot.isBusy()) {

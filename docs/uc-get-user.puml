@@ -1,0 +1,33 @@
+@startuml uc-get-user
+title Get User
+
+actor Client
+participant "UserController" as Controller
+participant "UserService" as Service
+participant "UserRepositoryPort" as Port
+database "PostgreSQL" as DB
+
+Client -> Controller : GET /api/v1/users/{userId}
+activate Controller
+
+Controller -> Service : getUser(userId)
+activate Service
+
+Service -> Port : findById(userId)
+activate Port
+Port -> DB : SELECT * FROM users WHERE id = ?
+DB --> Port : Optional<User>
+Port --> Service : Optional<User>
+deactivate Port
+
+alt user not found
+    Service --> Controller : throws UserNotFoundException
+    Controller --> Client : 404 Not Found
+else user found
+    Service --> Controller : User
+    Controller --> Client : 200 OK\n{id, email, name, createdAt}
+end
+deactivate Service
+deactivate Controller
+
+@enduml

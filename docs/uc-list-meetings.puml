@@ -1,0 +1,37 @@
+@startuml uc-list-meetings
+title List Meetings
+
+actor Client
+participant "MeetingController" as Controller
+participant "MeetingService" as Service
+participant "UserRepositoryPort" as UserPort
+participant "MeetingRepositoryPort" as MeetingPort
+database "PostgreSQL" as DB
+
+Client -> Controller : GET /api/v1/users/{userId}/meetings\n?page=&size=
+activate Controller
+
+Controller -> Service : listMeetings(userId, pageable)
+activate Service
+
+Service -> UserPort : existsById(userId)
+activate UserPort
+UserPort -> DB : SELECT 1 FROM users WHERE id = ?
+DB --> UserPort : true
+UserPort --> Service
+deactivate UserPort
+
+Service -> MeetingPort : findByUserId(userId, pageable)
+activate MeetingPort
+MeetingPort -> DB : SELECT m.* FROM meetings m\nJOIN time_slots ts ON ts.id = m.time_slot_id\nJOIN calendars c ON c.id = ts.calendar_id\nWHERE c.user_id = ?\nORDER BY ts.start_time DESC
+DB --> MeetingPort : Page<MeetingEntity>
+MeetingPort --> Service : Page<Meeting>
+deactivate MeetingPort
+
+Service --> Controller : Page<Meeting>
+deactivate Service
+
+Controller --> Client : 200 OK\n{content: [...], page, size, totalElements}
+deactivate Controller
+
+@enduml

@@ -1,0 +1,41 @@
+@startuml uc-get-time-slot
+title Get Time Slot
+
+actor Client
+participant "TimeSlotController" as Controller
+participant "TimeSlotService" as Service
+participant "CalendarRepositoryPort" as CalPort
+participant "TimeSlotRepositoryPort" as SlotPort
+database "PostgreSQL" as DB
+
+Client -> Controller : GET /api/v1/users/{userId}/slots/{slotId}
+activate Controller
+
+Controller -> Service : getTimeSlot(userId, slotId)
+activate Service
+
+Service -> CalPort : findByUserId(userId)
+activate CalPort
+CalPort -> DB : SELECT * FROM calendars WHERE user_id = ?
+DB --> CalPort : Optional<Calendar>
+CalPort --> Service : Calendar
+deactivate CalPort
+
+Service -> SlotPort : findByIdAndCalendarId(slotId, calendarId)
+activate SlotPort
+SlotPort -> DB : SELECT * FROM time_slots WHERE id = ? AND calendar_id = ?
+DB --> SlotPort : Optional<TimeSlotEntity>
+SlotPort --> Service : Optional<TimeSlot>
+deactivate SlotPort
+
+alt slot not found
+    Service --> Controller : throws TimeSlotNotFoundException
+    Controller --> Client : 404 Not Found
+else slot found
+    Service --> Controller : TimeSlot
+    Controller --> Client : 200 OK\n{id, startTime, endTime, status, meetingId, ...}
+end
+deactivate Service
+deactivate Controller
+
+@enduml

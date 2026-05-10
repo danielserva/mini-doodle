@@ -1,0 +1,250 @@
+@startuml class-diagram
+title Mini Doodle — Class Diagram
+
+skinparam packageStyle rectangle
+skinparam groupInheritance 2
+hide empty members
+
+' ─────────────────────────────────────────────
+' DOMAIN — Models
+' ─────────────────────────────────────────────
+package "domain.model" {
+    class User <<record>> {
+        +UUID id
+        +String email
+        +String name
+        +Instant createdAt
+    }
+
+    class Calendar <<record>> {
+        +UUID id
+        +UUID userId
+        +Instant createdAt
+    }
+
+    class TimeSlot <<record>> {
+        +UUID id
+        +UUID calendarId
+        +Instant startTime
+        +Instant endTime
+        +SlotStatus status
+        +UUID meetingId
+        +Instant createdAt
+        +Instant updatedAt
+        +boolean isFree()
+        +boolean isBusy()
+        +TimeSlot withStatus(SlotStatus)
+        +TimeSlot withMeeting(UUID)
+    }
+
+    class Meeting <<record>> {
+        +UUID id
+        +UUID timeSlotId
+        +Instant slotStartTime
+        +Instant slotEndTime
+        +String title
+        +String description
+        +Set<UUID> participantIds
+        +Instant createdAt
+        +Instant updatedAt
+    }
+
+    enum SlotStatus {
+        FREE
+        BUSY
+    }
+}
+
+' ─────────────────────────────────────────────
+' DOMAIN — Commands
+' ─────────────────────────────────────────────
+package "domain.command" {
+    class CreateUserCommand <<record>> {
+        +String email
+        +String name
+    }
+
+    class CreateTimeSlotCommand <<record>> {
+        +UUID userId
+        +Instant startTime
+        +Instant endTime
+    }
+
+    class UpdateTimeSlotCommand <<record>> {
+        +UUID userId
+        +UUID slotId
+        +Instant startTime
+        +Instant endTime
+    }
+
+    class ScheduleMeetingCommand <<record>> {
+        +UUID userId
+        +UUID slotId
+        +String title
+        +String description
+        +Set<UUID> participantIds
+    }
+}
+
+' ─────────────────────────────────────────────
+' DOMAIN — Ports In
+' ─────────────────────────────────────────────
+package "domain.port.in" {
+    interface UserUseCase {
+        +createUser(CreateUserCommand): User
+        +getUser(UUID): User
+    }
+
+    interface TimeSlotUseCase {
+        +createTimeSlot(CreateTimeSlotCommand): TimeSlot
+        +updateTimeSlot(UpdateTimeSlotCommand): TimeSlot
+        +deleteTimeSlot(UUID, UUID): void
+        +updateSlotStatus(UUID, UUID, SlotStatus): TimeSlot
+        +getTimeSlot(UUID, UUID): TimeSlot
+        +listTimeSlots(UUID, Instant, Instant, SlotStatus, Pageable): Page<TimeSlot>
+        +queryAvailability(UUID, Instant, Instant): List<TimeSlot>
+    }
+
+    interface MeetingUseCase {
+        +scheduleMeeting(ScheduleMeetingCommand): Meeting
+        +getMeeting(UUID, UUID): Meeting
+        +listMeetings(UUID, Pageable): Page<Meeting>
+    }
+}
+
+' ─────────────────────────────────────────────
+' DOMAIN — Ports Out
+' ─────────────────────────────────────────────
+package "domain.port.out" {
+    interface UserRepositoryPort {
+        +save(User): User
+        +findById(UUID): Optional<User>
+        +findByEmail(String): Optional<User>
+        +existsById(UUID): boolean
+    }
+
+    interface CalendarRepositoryPort {
+        +save(Calendar): Calendar
+        +findByUserId(UUID): Optional<Calendar>
+    }
+
+    interface TimeSlotRepositoryPort {
+        +save(TimeSlot): TimeSlot
+        +findById(UUID): Optional<TimeSlot>
+        +findByIdAndCalendarId(UUID, UUID): Optional<TimeSlot>
+        +findByIdAndCalendarIdForUpdate(UUID, UUID): Optional<TimeSlot>
+        +deleteById(UUID): void
+        +findByCalendarId(UUID, Instant, Instant, SlotStatus, Pageable): Page<TimeSlot>
+        +findByCalendarIdInRange(UUID, Instant, Instant): List<TimeSlot>
+    }
+
+    interface MeetingRepositoryPort {
+        +save(Meeting): Meeting
+        +findById(UUID): Optional<Meeting>
+        +findByUserId(UUID, Pageable): Page<Meeting>
+    }
+}
+
+' ─────────────────────────────────────────────
+' DOMAIN — Services
+' ─────────────────────────────────────────────
+package "domain.service" {
+    class UserService {
+        -UserRepositoryPort userRepository
+    }
+
+    class TimeSlotService {
+        -UserRepositoryPort userRepository
+        -CalendarRepositoryPort calendarRepository
+        -TimeSlotRepositoryPort timeSlotRepository
+    }
+
+    class MeetingService {
+        -UserRepositoryPort userRepository
+        -CalendarRepositoryPort calendarRepository
+        -TimeSlotRepositoryPort timeSlotRepository
+        -MeetingRepositoryPort meetingRepository
+    }
+}
+
+' ─────────────────────────────────────────────
+' ADAPTER IN — REST
+' ─────────────────────────────────────────────
+package "adapter.in.rest" {
+    class UserController {
+        -UserUseCase userUseCase
+        +createUser(CreateUserRequest): UserResponse
+        +getUser(UUID): UserResponse
+    }
+
+    class TimeSlotController {
+        -TimeSlotUseCase timeSlotUseCase
+        +createTimeSlot(UUID, CreateTimeSlotRequest): TimeSlotResponse
+        +listTimeSlots(UUID, ...): PagedResponse<TimeSlotResponse>
+        +getTimeSlot(UUID, UUID): TimeSlotResponse
+        +updateTimeSlot(UUID, UUID, UpdateTimeSlotRequest): TimeSlotResponse
+        +deleteTimeSlot(UUID, UUID): void
+        +updateSlotStatus(UUID, UUID, UpdateSlotStatusRequest): TimeSlotResponse
+    }
+
+    class MeetingController {
+        -MeetingUseCase meetingUseCase
+        +scheduleMeeting(UUID, UUID, ScheduleMeetingRequest): MeetingResponse
+        +listMeetings(UUID, ...): PagedResponse<MeetingResponse>
+        +getMeeting(UUID, UUID): MeetingResponse
+    }
+
+    class AvailabilityController {
+        -TimeSlotUseCase timeSlotUseCase
+        +getAvailability(UUID, Instant, Instant): AvailabilityResponse
+    }
+}
+
+' ─────────────────────────────────────────────
+' ADAPTER OUT — Persistence
+' ─────────────────────────────────────────────
+package "adapter.out.persistence" {
+    class UserPersistenceAdapter
+    class CalendarPersistenceAdapter
+    class TimeSlotPersistenceAdapter
+    class MeetingPersistenceAdapter
+}
+
+' ─────────────────────────────────────────────
+' Relationships
+' ─────────────────────────────────────────────
+
+' Services implement ports in
+UserService      ..|> UserUseCase
+TimeSlotService  ..|> TimeSlotUseCase
+MeetingService   ..|> MeetingUseCase
+
+' Services depend on ports out
+UserService      --> UserRepositoryPort
+TimeSlotService  --> UserRepositoryPort
+TimeSlotService  --> CalendarRepositoryPort
+TimeSlotService  --> TimeSlotRepositoryPort
+MeetingService   --> UserRepositoryPort
+MeetingService   --> CalendarRepositoryPort
+MeetingService   --> TimeSlotRepositoryPort
+MeetingService   --> MeetingRepositoryPort
+
+' Adapters implement ports out
+UserPersistenceAdapter      ..|> UserRepositoryPort
+CalendarPersistenceAdapter  ..|> CalendarRepositoryPort
+TimeSlotPersistenceAdapter  ..|> TimeSlotRepositoryPort
+MeetingPersistenceAdapter   ..|> MeetingRepositoryPort
+
+' Controllers depend on ports in
+UserController        --> UserUseCase
+TimeSlotController    --> TimeSlotUseCase
+MeetingController     --> MeetingUseCase
+AvailabilityController --> TimeSlotUseCase
+
+' Domain model relationships
+TimeSlot --> SlotStatus
+Calendar "1" --> "0..*" TimeSlot : owns
+User "1" --> "1" Calendar : owns
+TimeSlot "1" --> "0..1" Meeting : booked as
+
+@enduml

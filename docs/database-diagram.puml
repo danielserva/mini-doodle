@@ -1,0 +1,74 @@
+@startuml database-diagram
+title Mini Doodle — Database Diagram
+
+skinparam linetype ortho
+
+entity "users" as users {
+    * id : UUID <<PK>>
+    --
+    * email : VARCHAR(255) <<UNIQUE>>
+    * name : VARCHAR(255)
+    * created_at : TIMESTAMPTZ
+}
+
+entity "calendars" as calendars {
+    * id : UUID <<PK>>
+    --
+    * user_id : UUID <<FK>> <<UNIQUE>>
+    * created_at : TIMESTAMPTZ
+}
+
+entity "time_slots" as time_slots {
+    * id : UUID <<PK>>
+    --
+    * calendar_id : UUID <<FK>>
+    * start_time : TIMESTAMPTZ
+    * end_time : TIMESTAMPTZ
+    * status : VARCHAR(10)
+    meeting_id : UUID <<FK, nullable>>
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+    --
+    check: end_time > start_time
+}
+
+entity "meetings" as meetings {
+    * id : UUID <<PK>>
+    --
+    * time_slot_id : UUID <<FK>> <<UNIQUE>>
+    * title : VARCHAR(255)
+    description : TEXT
+    * created_at : TIMESTAMPTZ
+    * updated_at : TIMESTAMPTZ
+}
+
+entity "meeting_participants" as meeting_participants {
+    * meeting_id : UUID <<FK, PK>>
+    * user_id : UUID <<FK, PK>>
+}
+
+users            ||--o| calendars          : "1:1 ON DELETE CASCADE"
+calendars        ||--o{ time_slots         : "1:N ON DELETE CASCADE"
+time_slots       ||--o| meetings           : "1:1 ON DELETE CASCADE"
+meetings         ||--o{ meeting_participants : "1:N ON DELETE CASCADE"
+users            ||--o{ meeting_participants : "1:N ON DELETE CASCADE"
+
+note bottom of time_slots
+  Indexes:
+  · idx_time_slots_calendar_id
+  · idx_time_slots_calendar_start (calendar_id, start_time)
+  · idx_time_slots_status
+  · idx_time_slots_start_end (start_time, end_time)
+end note
+
+note bottom of meetings
+  Indexes:
+  · idx_meetings_time_slot_id
+end note
+
+note bottom of meeting_participants
+  Indexes:
+  · idx_meeting_participants_user_id
+end note
+
+@enduml

@@ -1,0 +1,76 @@
+@startuml uc-schedule-meeting
+title Schedule Meeting
+
+actor Client
+participant "MeetingController" as Controller
+participant "MeetingService" as Service
+participant "UserRepositoryPort" as UserPort
+participant "CalendarRepositoryPort" as CalPort
+participant "TimeSlotRepositoryPort" as SlotPort
+participant "MeetingRepositoryPort" as MeetingPort
+database "PostgreSQL" as DB
+
+Client -> Controller : POST /api/v1/users/{userId}/slots/{slotId}/meeting\n{title, description, participantIds}
+activate Controller
+
+Controller -> Service : scheduleMeeting(ScheduleMeetingCommand)
+activate Service
+
+Service -> UserPort : existsById(userId)
+activate UserPort
+UserPort -> DB : SELECT 1 FROM users WHERE id = ?
+DB --> UserPort : true
+UserPort --> Service
+deactivate UserPort
+
+Service -> CalPort : findByUserId(userId)
+activate CalPort
+CalPort -> DB : SELECT * FROM calendars WHERE user_id = ?
+DB --> CalPort : Calendar
+CalPort --> Service : Calendar
+deactivate CalPort
+
+Service -> SlotPort : findByIdAndCalendarIdForUpdate(slotId, calendarId)
+activate SlotPort
+SlotPort -> DB : SELECT * FROM time_slots\nWHERE id = ? AND calendar_id = ?\nFOR UPDATE
+note right: Pessimistic lock prevents\nconcurrent double-booking
+DB --> SlotPort : TimeSlotEntity (locked)
+SlotPort --> Service : TimeSlot
+deactivate SlotPort
+
+alt slot is BUSY
+    Service --> Controller : throws SlotAlreadyBookedException
+    Controller --> Client : 409 Conflict
+else slot is FREE
+    loop for each participantId
+        Service -> UserPort : existsById(participantId)
+        activate UserPort
+        UserPort -> DB : SELECT 1 FROM users WHERE id = ?
+        DB --> UserPort : boolean
+        UserPort --> Service
+        deactivate UserPort
+    end
+
+    Service -> Service : new Meeting(randomUUID, slotId,\n  startTime, endTime, title,\n  description, participantIds, now, now)
+
+    Service -> MeetingPort : save(meeting)
+    activate MeetingPort
+    MeetingPort -> DB : INSERT INTO meetings\nINSERT INTO meeting_participants
+    DB --> MeetingPort : Meeting
+    MeetingPort --> Service : Meeting
+    deactivate MeetingPort
+
+    Service -> SlotPort : save(slot.withMeeting(meetingId))
+    activate SlotPort
+    SlotPort -> DB : UPDATE time_slots SET status = 'BUSY', meeting_id = ?
+    DB --> SlotPort : TimeSlot
+    SlotPort --> Service : TimeSlot
+    deactivate SlotPort
+
+    Service --> Controller : Meeting
+    Controller --> Client : 201 Created\n{id, timeSlotId, title, ...}
+end
+deactivate Service
+deactivate Controller
+
+@enduml

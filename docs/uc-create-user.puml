@@ -1,0 +1,38 @@
+@startuml uc-create-user
+title Create User
+
+actor Client
+participant "UserController" as Controller
+participant "UserService" as Service
+participant "UserRepositoryPort" as Port
+database "PostgreSQL" as DB
+
+Client -> Controller : POST /api/v1/users\n{email, name}
+activate Controller
+
+Controller -> Service : createUser(CreateUserCommand)
+activate Service
+
+Service -> Port : findByEmail(email)
+activate Port
+Port -> DB : SELECT * FROM users WHERE email = ?
+DB --> Port : Optional<User>
+Port --> Service : Optional.empty()
+deactivate Port
+
+Service -> Service : new User(randomUUID, email, name, now)
+
+Service -> Port : save(user)
+activate Port
+Port -> DB : INSERT INTO users
+DB --> Port : User
+Port --> Service : User
+deactivate Port
+
+Service --> Controller : User
+deactivate Service
+
+Controller --> Client : 201 Created\n{id, email, name, createdAt}
+deactivate Controller
+
+@enduml
