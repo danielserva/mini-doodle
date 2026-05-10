@@ -102,6 +102,17 @@ GET /api/v1/users/{userId}/availability?from=2026-06-01T00:00:00Z&to=2026-06-07T
 
 Integration tests spin up a real PostgreSQL instance via Testcontainers.
 
+## Performance tests
+
+Gatling simulations live in [performance/](performance/). They require the service to be running.
+
+```bash
+docker compose up --build -d
+cd performance && mvn gatling:test
+```
+
+See [performance/README.md](performance/README.md) for details on each simulation.
+
 ## Tech stack
 
 | | |
