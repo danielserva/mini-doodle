@@ -11,4 +11,5 @@ public interface MeetingUseCase {
     Meeting scheduleMeeting(ScheduleMeetingCommand command);
     Meeting getMeeting(UUID userId, UUID meetingId);
     Page<Meeting> listMeetings(UUID userId, Pageable pageable);
+    void cancelMeeting(UUID userId, UUID meetingId);
 }

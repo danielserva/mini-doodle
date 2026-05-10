@@ -42,4 +42,9 @@ public class MeetingPersistenceAdapter implements MeetingRepositoryPort {
     public Page<Meeting> findByUserId(UUID userId, Pageable pageable) {
         return meetingRepository.findByUserId(userId, pageable).map(mapper::toDomain);
     }
+
+    @Override
+    public void deleteById(UUID id) {
+        meetingRepository.deleteById(id);
+    }
 }

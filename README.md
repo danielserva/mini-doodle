@@ -87,6 +87,7 @@ Scheduling a meeting atomically converts the slot from `FREE` to `BUSY`. Concurr
 | `POST` | `/api/v1/users/{userId}/slots/{slotId}/meeting` | Schedule a meeting |
 | `GET` | `/api/v1/users/{userId}/meetings` | List meetings (`?page=&size=`) |
 | `GET` | `/api/v1/users/{userId}/meetings/{meetingId}` | Get a meeting |
+| `DELETE` | `/api/v1/users/{userId}/meetings/{meetingId}` | Cancel a meeting (releases slot back to `FREE`) |
 
 ```json
 POST /api/v1/users/{userId}/slots/{slotId}/meeting

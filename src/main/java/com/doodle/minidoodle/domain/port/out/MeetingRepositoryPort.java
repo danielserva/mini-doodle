@@ -12,4 +12,5 @@ public interface MeetingRepositoryPort {
     Optional<Meeting> findById(UUID id);
     Optional<Meeting> findByTimeSlotId(UUID timeSlotId);
     Page<Meeting> findByUserId(UUID userId, Pageable pageable);
+    void deleteById(UUID id);
 }

@@ -48,4 +48,11 @@ public class MeetingController {
     public MeetingResponse getMeeting(@PathVariable UUID userId, @PathVariable UUID meetingId) {
         return MeetingResponse.from(meetingUseCase.getMeeting(userId, meetingId));
     }
+
+    @DeleteMapping("/api/v1/users/{userId}/meetings/{meetingId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Operation(summary = "Cancel a meeting and release the time slot back to FREE")
+    public void cancelMeeting(@PathVariable UUID userId, @PathVariable UUID meetingId) {
+        meetingUseCase.cancelMeeting(userId, meetingId);
+    }
 }

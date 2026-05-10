@@ -7,6 +7,7 @@ import com.doodle.minidoodle.domain.exception.TimeSlotNotFoundException;
 import com.doodle.minidoodle.domain.exception.UserNotFoundException;
 import com.doodle.minidoodle.domain.model.Calendar;
 import com.doodle.minidoodle.domain.model.Meeting;
+import com.doodle.minidoodle.domain.model.SlotStatus;
 import com.doodle.minidoodle.domain.model.TimeSlot;
 import com.doodle.minidoodle.domain.port.in.MeetingUseCase;
 import com.doodle.minidoodle.domain.port.out.CalendarRepositoryPort;
@@ -87,6 +88,18 @@ public class MeetingService implements MeetingUseCase {
             throw new UserNotFoundException(userId);
         }
         return meetingRepository.findByUserId(userId, pageable);
+    }
+
+    @Override
+    @Transactional
+    public void cancelMeeting(UUID userId, UUID meetingId) {
+        Calendar calendar = requireCalendar(userId);
+        Meeting meeting = meetingRepository.findById(meetingId)
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+        TimeSlot slot = timeSlotRepository.findByIdAndCalendarIdForUpdate(meeting.timeSlotId(), calendar.id())
+                .orElseThrow(() -> new MeetingNotFoundException(meetingId));
+        timeSlotRepository.save(slot.withStatus(SlotStatus.FREE));
+        meetingRepository.deleteById(meetingId);
     }
 
     private Calendar requireCalendar(UUID userId) {

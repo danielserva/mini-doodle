@@ -80,6 +80,45 @@ class UserControllerIT {
     }
 
     @Test
+    void cancelMeeting_releaseSlotBackToFree() throws Exception {
+        UserResponse organizer = createUser("cancel-organizer@test.com", "Cancel Organizer");
+
+        Instant start = Instant.parse("2026-07-01T09:00:00Z");
+        Instant end = Instant.parse("2026-07-01T10:00:00Z");
+        TimeSlotResponse slot = createTimeSlot(organizer.id().toString(), start, end);
+
+        MeetingResponse meeting = scheduleMeeting(organizer.id().toString(), slot.id().toString(),
+                "Cancellable", null, Set.of());
+
+        // Slot is BUSY after scheduling
+        mockMvc.perform(get("/api/v1/users/{userId}/slots/{slotId}", organizer.id(), slot.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("BUSY"));
+
+        // Cancel the meeting
+        mockMvc.perform(delete("/api/v1/users/{userId}/meetings/{meetingId}", organizer.id(), meeting.id()))
+                .andExpect(status().isNoContent());
+
+        // Slot is FREE again
+        mockMvc.perform(get("/api/v1/users/{userId}/slots/{slotId}", organizer.id(), slot.id()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("FREE"))
+                .andExpect(jsonPath("$.meetingId").doesNotExist());
+
+        // Meeting is gone
+        mockMvc.perform(get("/api/v1/users/{userId}/meetings/{meetingId}", organizer.id(), meeting.id()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void cancelMeeting_returnsNotFoundForUnknownMeeting() throws Exception {
+        UserResponse organizer = createUser("cancel-404@test.com", "Cancel 404");
+
+        mockMvc.perform(delete("/api/v1/users/{userId}/meetings/00000000-0000-0000-0000-000000000000", organizer.id()))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void createUser_rejectsDuplicateEmail() throws Exception {
         createUser("unique@test.com", "User One");
 
