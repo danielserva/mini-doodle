@@ -10,8 +10,8 @@ import static io.gatling.javaapi.http.HttpDsl.*;
 
 public class SlotScenario {
 
-    // Fixed base: start of the next day (UTC), computed once at class load
-    private static final Instant BASE = Instant.now().truncatedTo(ChronoUnit.DAYS).plusSeconds(86400);
+    // Fixed base: start of the next day (UTC), minute precision, computed once at class load
+    private static final Instant BASE = Instant.now().truncatedTo(ChronoUnit.DAYS).plusSeconds(86400).truncatedTo(ChronoUnit.MINUTES);
 
     public static String fromTime() {
         return BASE.toString();

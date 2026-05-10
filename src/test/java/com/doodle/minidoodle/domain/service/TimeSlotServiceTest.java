@@ -1,16 +1,13 @@
 package com.doodle.minidoodle.domain.service;
 
 import com.doodle.minidoodle.domain.command.CreateTimeSlotCommand;
-import com.doodle.minidoodle.domain.command.ScheduleMeetingCommand;
-import com.doodle.minidoodle.domain.exception.SlotAlreadyBookedException;
+import com.doodle.minidoodle.domain.command.UpdateTimeSlotCommand;
 import com.doodle.minidoodle.domain.exception.TimeSlotNotFoundException;
 import com.doodle.minidoodle.domain.exception.UserNotFoundException;
 import com.doodle.minidoodle.domain.model.Calendar;
-import com.doodle.minidoodle.domain.model.Meeting;
 import com.doodle.minidoodle.domain.model.SlotStatus;
 import com.doodle.minidoodle.domain.model.TimeSlot;
 import com.doodle.minidoodle.domain.port.out.CalendarRepositoryPort;
-import com.doodle.minidoodle.domain.port.out.MeetingRepositoryPort;
 import com.doodle.minidoodle.domain.port.out.TimeSlotRepositoryPort;
 import com.doodle.minidoodle.domain.port.out.UserRepositoryPort;
 import org.junit.jupiter.api.Test;
@@ -20,8 +17,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -79,6 +76,39 @@ class TimeSlotServiceTest {
 
         assertThat(result.calendarId()).isEqualTo(calendarId);
         verify(calendarRepository).save(any());
+    }
+
+    @Test
+    void createTimeSlot_truncatesTimesToMinutePrecision() {
+        Instant startWithSeconds = Instant.parse("2026-05-20T09:00:45Z");
+        Instant endWithSeconds   = Instant.parse("2026-05-20T10:00:30Z");
+        Calendar calendar = new Calendar(calendarId, userId, Instant.now());
+        when(userRepository.existsById(userId)).thenReturn(true);
+        when(calendarRepository.findByUserId(userId)).thenReturn(Optional.of(calendar));
+        when(timeSlotRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        TimeSlot result = timeSlotService.createTimeSlot(new CreateTimeSlotCommand(userId, startWithSeconds, endWithSeconds));
+
+        assertThat(result.startTime()).isEqualTo(startWithSeconds.truncatedTo(ChronoUnit.MINUTES));
+        assertThat(result.endTime()).isEqualTo(endWithSeconds.truncatedTo(ChronoUnit.MINUTES));
+    }
+
+    @Test
+    void updateTimeSlot_truncatesTimesToMinutePrecision() {
+        UUID slotId = UUID.randomUUID();
+        Instant startWithSeconds = Instant.parse("2026-05-20T11:00:45Z");
+        Instant endWithSeconds   = Instant.parse("2026-05-20T12:00:30Z");
+        Calendar calendar = new Calendar(calendarId, userId, Instant.now());
+        TimeSlot existing = new TimeSlot(slotId, calendarId, start, end, SlotStatus.FREE, null, Instant.now(), Instant.now());
+        when(userRepository.existsById(userId)).thenReturn(true);
+        when(calendarRepository.findByUserId(userId)).thenReturn(Optional.of(calendar));
+        when(timeSlotRepository.findByIdAndCalendarId(slotId, calendarId)).thenReturn(Optional.of(existing));
+        when(timeSlotRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        TimeSlot result = timeSlotService.updateTimeSlot(new UpdateTimeSlotCommand(userId, slotId, startWithSeconds, endWithSeconds));
+
+        assertThat(result.startTime()).isEqualTo(startWithSeconds.truncatedTo(ChronoUnit.MINUTES));
+        assertThat(result.endTime()).isEqualTo(endWithSeconds.truncatedTo(ChronoUnit.MINUTES));
     }
 
     @Test

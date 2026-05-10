@@ -73,8 +73,10 @@ POST /api/v1/users
 
 ```json
 POST /api/v1/users/{userId}/slots
-{ "startTime": "2026-06-01T09:00:00Z", "endTime": "2026-06-01T10:00:00Z" }
+{ "startTime": "2026-06-01T09:00Z", "endTime": "2026-06-01T10:00Z" }
 ```
+
+`startTime` and `endTime` accept ISO 8601 date-time with optional timezone (defaults to UTC). Values are truncated to minute precision — seconds are ignored. The same applies to `PUT /slots/{slotId}`.
 
 ### Meetings
 

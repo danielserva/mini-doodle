@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,12 +37,15 @@ public class TimeSlotService implements TimeSlotUseCase {
         if (!userRepository.existsById(command.userId())) {
             throw new UserNotFoundException(command.userId());
         }
+        Instant start = command.startTime().truncatedTo(ChronoUnit.MINUTES);
+        Instant end   = command.endTime().truncatedTo(ChronoUnit.MINUTES);
+        validateTimeRange(start, end);
         Calendar calendar = getOrCreateCalendar(command.userId());
         TimeSlot slot = new TimeSlot(
                 UUID.randomUUID(),
                 calendar.id(),
-                command.startTime(),
-                command.endTime(),
+                start,
+                end,
                 SlotStatus.FREE,
                 null,
                 Instant.now(),
@@ -58,11 +62,14 @@ public class TimeSlotService implements TimeSlotUseCase {
         if (slot.isBusy()) {
             throw new SlotAlreadyBookedException(command.slotId());
         }
+        Instant start = command.startTime().truncatedTo(ChronoUnit.MINUTES);
+        Instant end   = command.endTime().truncatedTo(ChronoUnit.MINUTES);
+        validateTimeRange(start, end);
         TimeSlot updated = new TimeSlot(
                 slot.id(),
                 slot.calendarId(),
-                command.startTime(),
-                command.endTime(),
+                start,
+                end,
                 slot.status(),
                 slot.meetingId(),
                 slot.createdAt(),
@@ -125,5 +132,11 @@ public class TimeSlotService implements TimeSlotUseCase {
     private TimeSlot requireSlotInCalendar(UUID slotId, UUID calendarId) {
         return timeSlotRepository.findByIdAndCalendarId(slotId, calendarId)
                 .orElseThrow(() -> new TimeSlotNotFoundException(slotId));
+    }
+
+    private void validateTimeRange(Instant start, Instant end) {
+        if (!end.isAfter(start)) {
+            throw new IllegalArgumentException("endTime must be after startTime");
+        }
     }
 }

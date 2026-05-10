@@ -10,10 +10,14 @@ import com.doodle.minidoodle.domain.model.TimeSlot;
 import com.doodle.minidoodle.domain.port.out.TimeSlotRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -64,8 +68,20 @@ public class TimeSlotPersistenceAdapter implements TimeSlotRepositoryPort {
 
     @Override
     public Page<TimeSlot> findByCalendarId(UUID calendarId, Instant from, Instant to, SlotStatus status, Pageable pageable) {
-        return timeSlotRepository.findByFilters(calendarId, from, to, status, pageable)
-                .map(mapper::toDomain);
+        Specification<TimeSlotEntity> spec = buildSpec(calendarId, from, to, status);
+        Pageable sorted = pageable.isPaged()
+                ? PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), Sort.by("startTime").ascending())
+                : pageable;
+        return timeSlotRepository.findAll(spec, sorted).map(mapper::toDomain);
+    }
+
+    private Specification<TimeSlotEntity> buildSpec(UUID calendarId, Instant from, Instant to, SlotStatus status) {
+        List<Specification<TimeSlotEntity>> predicates = new ArrayList<>();
+        predicates.add((root, q, cb) -> cb.equal(root.get("calendar").get("id"), calendarId));
+        if (from != null)   predicates.add((root, q, cb) -> cb.greaterThanOrEqualTo(root.get("startTime"), from));
+        if (to != null)     predicates.add((root, q, cb) -> cb.lessThanOrEqualTo(root.get("endTime"), to));
+        if (status != null) predicates.add((root, q, cb) -> cb.equal(root.get("status"), status));
+        return predicates.stream().reduce(Specification.where(null), Specification::and);
     }
 
     @Override
