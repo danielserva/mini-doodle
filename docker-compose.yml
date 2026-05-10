@@ -1,0 +1,33 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: mini-doodle-postgres
+    environment:
+      POSTGRES_DB: minidoodle
+      POSTGRES_USER: minidoodle
+      POSTGRES_PASSWORD: minidoodle
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U minidoodle"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: mini-doodle-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/minidoodle
+      SPRING_DATASOURCE_USERNAME: minidoodle
+      SPRING_DATASOURCE_PASSWORD: minidoodle
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
