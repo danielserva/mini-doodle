@@ -52,6 +52,7 @@ The service starts on `http://localhost:8080`.
 | Method | Path | Description |
 |---|---|---|
 | `POST` | `/api/v1/users` | Create a user |
+| `GET` | `/api/v1/users` | List all users (`?page=&size=`) |
 | `GET` | `/api/v1/users/{userId}` | Get a user |
 
 ```json
@@ -98,8 +99,11 @@ POST /api/v1/users/{userId}/slots/{slotId}/meeting
 
 Returns all slots in a time range with free/busy counts.
 
+`from` and `to` are optional. If both are omitted, the window defaults to now through 7 days from now. Providing exactly one of them returns `400 Bad Request`.
+
 ```
 GET /api/v1/users/{userId}/availability?from=2026-06-01T00:00:00Z&to=2026-06-07T00:00:00Z
+GET /api/v1/users/{userId}/availability
 ```
 
 ```json

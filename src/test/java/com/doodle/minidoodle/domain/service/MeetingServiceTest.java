@@ -51,7 +51,7 @@ class MeetingServiceTest {
 
         when(userRepository.existsById(userId)).thenReturn(true);
         when(calendarRepository.findByUserId(userId)).thenReturn(Optional.of(calendar));
-        when(timeSlotRepository.findByIdAndCalendarId(slotId, calendarId)).thenReturn(Optional.of(freeSlot));
+        when(timeSlotRepository.findByIdAndCalendarIdForUpdate(slotId, calendarId)).thenReturn(Optional.of(freeSlot));
         when(meetingRepository.save(any())).thenReturn(savedMeeting);
         when(timeSlotRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
@@ -70,7 +70,7 @@ class MeetingServiceTest {
 
         when(userRepository.existsById(userId)).thenReturn(true);
         when(calendarRepository.findByUserId(userId)).thenReturn(Optional.of(calendar));
-        when(timeSlotRepository.findByIdAndCalendarId(slotId, calendarId)).thenReturn(Optional.of(busySlot));
+        when(timeSlotRepository.findByIdAndCalendarIdForUpdate(slotId, calendarId)).thenReturn(Optional.of(busySlot));
 
         assertThatThrownBy(() -> meetingService.scheduleMeeting(
                 new ScheduleMeetingCommand(userId, slotId, "Meeting", null, Set.of())))
@@ -83,7 +83,7 @@ class MeetingServiceTest {
 
         when(userRepository.existsById(userId)).thenReturn(true);
         when(calendarRepository.findByUserId(userId)).thenReturn(Optional.of(calendar));
-        when(timeSlotRepository.findByIdAndCalendarId(slotId, calendarId)).thenReturn(Optional.empty());
+        when(timeSlotRepository.findByIdAndCalendarIdForUpdate(slotId, calendarId)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> meetingService.scheduleMeeting(
                 new ScheduleMeetingCommand(userId, slotId, "Meeting", null, Set.of())))

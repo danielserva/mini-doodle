@@ -10,6 +10,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.time.Instant;
 import java.util.UUID;
 
@@ -34,5 +37,11 @@ public class UserService implements UserUseCase {
     public User getUser(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Page<User> listUsers(Pageable pageable) {
+        return userRepository.findAll(pageable);
     }
 }

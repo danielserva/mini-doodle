@@ -95,6 +95,32 @@ class UserControllerIT {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void listUsers_returnsPagedResultsContainingCreatedUsers() throws Exception {
+        UserResponse alice = createUser("alice-list@test.com", "Alice");
+        UserResponse bob   = createUser("bob-list@test.com", "Bob");
+
+        mockMvc.perform(get("/api/v1/users").param("size", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content").isArray())
+                .andExpect(jsonPath("$.totalElements").isNumber())
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$..content[?(@.id == '" + alice.id() + "')]").exists())
+                .andExpect(jsonPath("$..content[?(@.id == '" + bob.id() + "')]").exists());
+    }
+
+    @Test
+    void listUsers_paginationIsRespected() throws Exception {
+        createUser("page-a@test.com", "Page A");
+        createUser("page-b@test.com", "Page B");
+
+        mockMvc.perform(get("/api/v1/users").param("page", "0").param("size", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.size").value(1))
+                .andExpect(jsonPath("$.page").value(0));
+    }
+
     private UserResponse createUser(String email, String name) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/v1/users")
                         .contentType(MediaType.APPLICATION_JSON)

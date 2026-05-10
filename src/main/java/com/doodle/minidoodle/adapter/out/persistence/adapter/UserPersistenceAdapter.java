@@ -5,6 +5,8 @@ import com.doodle.minidoodle.adapter.out.persistence.repository.UserJpaRepositor
 import com.doodle.minidoodle.domain.model.User;
 import com.doodle.minidoodle.domain.port.out.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.Optional;
@@ -35,5 +37,10 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
     @Override
     public boolean existsById(UUID id) {
         return repository.existsById(id);
+    }
+
+    @Override
+    public Page<User> findAll(Pageable pageable) {
+        return repository.findAll(pageable).map(mapper::toDomain);
     }
 }
